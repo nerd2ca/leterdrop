@@ -1,37 +1,45 @@
+var words = {}
+m.request('words', {responseType: 'text'}).then(r => {
+    r.split('\n').map(word => {
+        words[word.toLowerCase()] = true
+    })
+})
 const Letter = {
-    view: vnode => {
+    view: letter => {
         return m('.', {
             style: {
                 display: 'inline-block',
                 padding: '0.1em',
                 border: '1px dashed #999',
                 borderRadius: '0.1em',
-                color: '#fff',
+                color: letter.attrs.rune ? '#fff' : '#000',
                 fontSize: '3em',
                 fontWeight: 'bold',
                 width: '1.1em',
                 height: '1.1em',
                 margin: 'auto',
             },
+            onclick: letter.attrs.take,
         }, [
-            vnode.attrs.rune,
+            letter.attrs.rune || '-',
         ])
     },
 }
 
-const Page = {
-    oninit: vnode => {
+const Board = {
+    oninit: board => {
         const gridw = 6, gridh = 6
-        vnode.state.rows = []
+        board.state.rows = []
         for (let y=0; y<gridh; y++) {
             let r = []
             for (let x=0; x<gridw; x++) {
                 r.push(null)
             }
-            vnode.state.rows.push(r)
+            board.state.rows.push(r)
         }
+        board.state.next = 'A'
     },
-    view: vnode => {
+    view: board => {
         return m('.', {
             style: {
                 background: '#000',
@@ -39,12 +47,19 @@ const Page = {
                 height: '100%',
             },
         }, [
-            m(Letter, {rune: 'A'}),
-            vnode.state.rows.map(cols => {
+            m(Letter, {rune: board.state.next}),
+            board.state.rows.map((cols, row) => {
                 return [
                     m('br'),
-                    cols.map(rune => {
-                        return m(Letter, {rune: rune})
+                    cols.map((rune, col) => {
+                        return m(Letter, {
+                            rune: rune,
+                            take: _ => {
+                                if (rune) return
+                                board.state.rows[row][col] = board.state.next
+                                board.state.next = String.fromCharCode(65 + Math.random()*26)
+                            },
+                        })
                     }),
                 ]
             }),
@@ -53,4 +68,4 @@ const Page = {
 }
 
 document.body.style.margin = 0
-m.mount(document.body, Page)
+m.mount(document.body, Board)
