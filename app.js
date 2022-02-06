@@ -13,67 +13,49 @@ m.request('words', {responseType: 'text'}).then(resp => {
         }
     }
 })
-const Button = {
-    view: button => {
-        return m('.', {
-            style: {
-                display: 'inline-block',
-                margin: '0.2em 0',
-                padding: '0.1em 1em',
-                fontSize: '1.5em',
-                border: '1px solid #449',
-                borderRadius: '0.3em',
-                background: '#225',
-                textAlign: 'center',
-                cursor: 'pointer',
-                color: '#fff',
-            },
-            onclick: button.attrs.onclick,
-        }, button.children)
-    },
+function Button() {
+    return {
+        view: vnode => {
+            return m('.button', {
+                style: {
+                    fontSize: ''+(vnode.attrs.size*0.7)+'px',
+                },
+                onclick: vnode.attrs.onclick,
+            }, vnode.children)
+        },
+    }
 }
-const Letter = {
-    view: letter => {
-        return m('.', {
-            style: {
-                background: letter.attrs.background,
-                display: 'inline-block',
-                padding: '0.1em',
-                border: '1px dashed #555',
-                borderRadius: '0.1em',
-                color: letter.attrs.rune ? '#fff' : '#000',
-                fontSize: '3em',
-                fontWeight: 'bold',
-                width: '1.1em',
-                height: '1.1em',
-                textAlign: 'center',
-                cursor: 'pointer',
-            },
-            onclick: e => {
-                e.preventDefault()
-                letter.attrs.take()
-            },
-        }, [
-            letter.attrs.rune || '-',
-        ])
-    },
+function Letter() {
+    return {
+        view: vnode => {
+            return m('.letter', {
+                style: {
+                    background: vnode.attrs.background,
+                    color: vnode.attrs.rune ? '#fff' : '#000',
+                    fontSize: ''+(vnode.attrs.size*0.7)+'px',
+                    width: ''+vnode.attrs.size+'px',
+                    height: ''+vnode.attrs.size+'px',
+                },
+                onclick: e => {
+                    e.preventDefault()
+                    vnode.attrs.take()
+                },
+            }, [
+                vnode.attrs.rune || '-',
+            ])
+        },
+    }
 }
 function Score() {
     return {
         view: vnode => {
-            return m('.', {
+            return m('.score', {
                 style: {
                     background: vnode.attrs.background,
-                    display: 'inline-block',
-                    padding: '0.1em',
-                    border: '1px dashed #555',
-                    borderRadius: '0.1em',
                     color: vnode.attrs.color,
-                    fontSize: '3em',
-                    fontWeight: 'bold',
-                    width: '4em',
-                    height: '1.1em',
-                    textAlign: 'right',
+                    fontSize: ''+(vnode.attrs.size*0.7)+'px',
+                    width: ''+(vnode.attrs.size*3)+'px',
+                    height: ''+vnode.attrs.size+'px',
                 },
             }, [
                 vnode.attrs.score,
@@ -84,7 +66,9 @@ function Score() {
 
 function Board() {
     const gridw = 8, gridh = 8, minwordlen = 3
+    var sqsize
     var rows, next, prizes, highlight, score, hiscore
+    const nbsp = m.trust('&nbsp')
     return {
         oninit: vnode => {
             board = []
@@ -100,24 +84,26 @@ function Board() {
             highlight = {}
             score = 0
             hiscore = window.localStorage.getItem('hiscore') || 0
+            window.addEventListener('resize', setSize)
+            window.addEventListener('orientationchange', setSize)
+            setSize()
         },
         view: vnode => {
             if (!words.righteous) return
-            return m('.', {
+            return m('.board', {
                 style: {
-                    background: '#000',
-                    width: '100%',
-                    height: '100%',
+                    whiteSpace: 'nowrap',
                 },
             }, [
-                m(Letter, {rune: next, background: '#442'}),
-                m(Score, {score: score, background: '#030', color: '#bfb'}),
-                m(Score, {score: hiscore, background: '#030', color: '#9b9'}),
+                m(Letter, {size: sqsize, rune: next, background: '#442'}),
+                m(Score, {size: sqsize, score: score, background: '#030', color: '#bfb'}),
+                m(Score, {size: sqsize, score: hiscore, background: '#030', color: '#9b9'}),
                 board.map((cols, row) => {
                     return [
                         m('br'),
                         cols.map((rune, col) => {
                             return m(Letter, {
+                                size: sqsize,
                                 rune: rune,
                                 background: highlight[''+row+','+col] ? '#050' : '#000',
                                 take: _ => {
@@ -134,6 +120,7 @@ function Board() {
                 }),
                 m('br'),
                 m(Button, {
+                    size: sqsize,
                     onclick: e => {
                         e.preventDefault()
                         board.map(cols => {
@@ -151,13 +138,20 @@ function Board() {
                         color: '#bfb',
                     },
                 }, prizes.map(word => {
-                    return [word.toLowerCase(), ' ']
+                    return [word.toLowerCase(), nbsp, ' ']
                 })),
             ])
         },
     }
+    function setSize() {
+        sqsize = Math.min(
+            window.innerWidth / gridw,
+            window.innerHeight / (gridh + 3)) - 2
+        m.redraw()
+    }
     function givePrizes(prizeRow, prizeCol) {
         highlight = {}
+        let rowscore = 0
         for (let startcol=0; startcol<=prizeCol; startcol++)
             for (var endcol=Math.max(prizeCol+1, startcol+minwordlen); endcol<=gridw; endcol++) {
                 var word = ''
@@ -165,12 +159,13 @@ function Board() {
                     word += board[prizeRow][col] || ' '
                 if (words[word]) {
                     prizes.push(word)
-                    score += Math.floor(Math.exp(word.length))
+                    rowscore += Math.floor(Math.exp(word.length))
                     for (let col=startcol; col<endcol; col++)
                         highlight[''+prizeRow+','+col] = true
                 } else
                     console.log('no "'+word+'"')
             }
+        let colscore = 0
         for (let startrow=0; startrow<=prizeRow; startrow++)
             for (let endrow=Math.max(prizeRow+1, startrow+minwordlen); endrow<=gridh; endrow++) {
                 var word = ''
@@ -178,12 +173,17 @@ function Board() {
                     word += board[row][prizeCol] || ' '
                 if (words[word]) {
                     prizes.push(word)
-                    score += Math.floor(Math.exp(word.length))
+                    colscore += Math.floor(Math.exp(word.length))
                     for (let row=startrow; row<endrow; row++)
                         highlight[''+row+','+prizeCol] = true
                 } else
                     console.log('no '+word)
             }
+        if (rowscore && colscore)
+            score += rowscore * colscore
+        else
+            score += rowscore + colscore
+        hiscore = window.localStorage.getItem('hiscore') || 0
         if (score > hiscore) {
             hiscore = score
             window.localStorage.setItem('hiscore', hiscore)
