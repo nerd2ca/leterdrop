@@ -90,34 +90,36 @@ function Board() {
         },
         view: vnode => {
             if (!words.righteous) return
-            return m('.board', {
-                style: {
-                    whiteSpace: 'nowrap',
-                },
-            }, [
+            return m('.board', [
                 m(Letter, {size: sqsize, rune: next, background: '#442'}),
                 m(Score, {size: sqsize, score: score, background: '#030', color: '#bfb'}),
                 m(Score, {size: sqsize, score: hiscore, background: '#030', color: '#9b9'}),
-                board.map((cols, row) => {
-                    return [
-                        m('br'),
-                        cols.map((rune, col) => {
-                            return m(Letter, {
-                                size: sqsize,
-                                rune: rune,
-                                background: highlight[''+row+','+col] ? '#050' : '#000',
-                                take: _ => {
-                                    if (rune) return
-                                    board[row][col] = next
-                                    let prev = next
-                                    while (prev == next)
-                                        next = letters[Math.floor(Math.random()*letters.length)]
-                                    givePrizes(row, col)
-                                },
-                            })
-                        }),
-                    ]
-                }),
+                m('.', {
+                    style: {
+                        whiteSpace: 'nowrap',
+                    },
+                }, [
+                    board.map((cols, row) => {
+                        return [
+                            m('br'),
+                            cols.map((rune, col) => {
+                                return m(Letter, {
+                                    size: sqsize,
+                                    rune: rune,
+                                    background: highlight[''+row+','+col] ? '#050' : '#000',
+                                    take: _ => {
+                                        if (rune) return
+                                        board[row][col] = next
+                                        let prev = next
+                                        while (prev == next)
+                                            next = letters[Math.floor(Math.random()*letters.length)]
+                                        givePrizes(row, col)
+                                    },
+                                })
+                            }),
+                        ]
+                    }),
+                ]),
                 m('br'),
                 m(Button, {
                     size: sqsize,
