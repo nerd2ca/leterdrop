@@ -64,32 +64,54 @@ function Score() {
     }
 }
 
-function Board() {
+function Game() {
     const gridw = 8, gridh = 8, minwordlen = 3
     var sqsize
     var rows, next, prizes, highlight, score, hiscore
+    var randfunc, nextfunc, resettime
     const nbsp = m.trust('&nbsp')
-    return {
-        oninit: vnode => {
-            board = []
-            for (let y=0; y<gridh; y++) {
-                let r = []
-                for (let x=0; x<gridw; x++) {
-                    r.push(null)
-                }
-                board.push(r)
+    window.addEventListener('resize', setSize)
+    window.addEventListener('orientationchange', setSize)
+    setSize()
+    function reset() {
+        board = []
+        for (let y=0; y<gridh; y++) {
+            let r = []
+            for (let x=0; x<gridw; x++) {
+                r.push(null)
             }
-            next = 'a'
-            prizes = []
-            highlight = {}
-            score = 0
-            hiscore = window.localStorage.getItem('hiscore') || 0
-            window.addEventListener('resize', setSize)
-            window.addEventListener('orientationchange', setSize)
-            setSize()
-        },
+            board.push(r)
+        }
+        prizes = []
+        highlight = {}
+        score = 0
+        hiscore = window.localStorage.getItem('hiscore') || 0
+        var t = new Date()
+        t.setHours(0)
+        t.setMinutes(0, 0, 0)
+        randfunc = mulberry32(t.getTime())
+        nextfunc = _ => {
+            let c = next
+            while (!c || c === next)
+                c = letters[Math.floor(randfunc()*letters.length)]
+            return c
+        }
+        next = nextfunc()
+    }
+    function autoreset() {
+        reset()
+        let t = new Date()
+        for (let d=t.getDate(); d==t.getDate(); t=new Date(t.getTime()+3600000));
+        t.setHours(0)
+        t.setMinutes(0, 0, 0)
+        resettime = t
+        let diff = t.getTime() - (new Date().getTime())
+        window.setTimeout(autoreset, diff)
+    }
+    return {
         view: vnode => {
             if (!words.righteous) return
+            if (!resettime) autoreset()
             return m('.board', [
                 m(Letter, {size: sqsize, rune: next, background: '#442'}),
                 m(Score, {size: sqsize, score: score, background: '#030', color: '#bfb'}),
@@ -110,9 +132,7 @@ function Board() {
                                     take: _ => {
                                         if (rune) return
                                         board[row][col] = next
-                                        let prev = next
-                                        while (prev == next)
-                                            next = letters[Math.floor(Math.random()*letters.length)]
+                                        next = nextfunc()
                                         givePrizes(row, col)
                                     },
                                 })
@@ -125,13 +145,7 @@ function Board() {
                     size: sqsize,
                     onclick: e => {
                         e.preventDefault()
-                        board.map(cols => {
-                            return cols.map((_, col) => { cols[col] = null })
-                        })
-                        prizes = []
-                        next = 'a'
-                        highlight = {}
-                        score = 0
+                        reset()
                     },
                 }, 'clear'),
                 m('br'),
@@ -191,7 +205,15 @@ function Board() {
             window.localStorage.setItem('hiscore', hiscore)
         }
     }
+    function mulberry32(a) {
+        return function() {
+            var t = a += 0x6D2B79F5;
+            t = Math.imul(t ^ t >>> 15, t | 1);
+            t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+            return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        }
+    }
 }
 
 document.body.style.margin = 0
-m.mount(document.body, Board)
+m.mount(document.body, Game)
