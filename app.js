@@ -26,6 +26,7 @@ function Button() {
     }
 }
 function Letter() {
+    const nbsp = m.trust('&nbsp;')
     return {
         view: vnode => {
             return m('.letter', {
@@ -41,7 +42,7 @@ function Letter() {
                     vnode.attrs.take()
                 },
             }, [
-                vnode.attrs.rune || '-',
+                vnode.attrs.rune || nbsp,
             ])
         },
     }
