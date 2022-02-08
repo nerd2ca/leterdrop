@@ -68,7 +68,7 @@ function Score() {
 function Game() {
     const gridw = 8, gridh = 8, minwordlen = 3
     var sqsize
-    var rows, next, prizes, highlight, score, hiscore
+    var rows, next, used, prizes, highlight, score, hiscore
     var randfunc, nextfunc, resettime
     const nbsp = m.trust('&nbsp')
     window.addEventListener('resize', setSize)
@@ -95,12 +95,13 @@ function Game() {
             let c = next
             while (!c || c === next)
                 c = letters[Math.floor(randfunc()*letters.length)]
+            used++
             return c
         }
+        used = 0
         next = nextfunc()
     }
     function autoreset() {
-        reset()
         let t = new Date()
         for (let d=t.getDate(); d==t.getDate(); t=new Date(t.getTime()+3600000));
         t.setHours(0)
@@ -108,6 +109,8 @@ function Game() {
         resettime = t
         let diff = t.getTime() - (new Date().getTime())
         window.setTimeout(autoreset, diff)
+        if (!restoreBoardState())
+            reset()
     }
     return {
         view: vnode => {
@@ -126,15 +129,18 @@ function Game() {
                         return [
                             m('br'),
                             cols.map((rune, col) => {
+                                let hi = highlight[''+row+','+col]
                                 return m(Letter, {
                                     size: sqsize,
                                     rune: rune,
-                                    background: highlight[''+row+','+col] ? '#050' : '#000',
+                                    background: hi>1 ? '#050' : (hi ? '#030' : '#000'),
                                     take: _ => {
+                                        if (restoreBoardState()) return
                                         if (rune) return
                                         board[row][col] = next
                                         next = nextfunc()
                                         givePrizes(row, col)
+                                        saveBoardState()
                                     },
                                 })
                             }),
@@ -167,7 +173,9 @@ function Game() {
         m.redraw()
     }
     function givePrizes(prizeRow, prizeCol) {
-        highlight = {}
+        Object.keys(highlight).map(k => {
+            highlight[k] = 1
+        })
         let rowscore = 0
         for (let startcol=0; startcol<=prizeCol; startcol++)
             for (var endcol=Math.max(prizeCol+1, startcol+minwordlen); endcol<=gridw; endcol++) {
@@ -178,9 +186,8 @@ function Game() {
                     prizes.push(word)
                     rowscore += Math.floor(Math.exp(word.length))
                     for (let col=startcol; col<endcol; col++)
-                        highlight[''+prizeRow+','+col] = true
-                } else
-                    console.log('no "'+word+'"')
+                        highlight[''+prizeRow+','+col] = 2
+                }
             }
         let colscore = 0
         for (let startrow=0; startrow<=prizeRow; startrow++)
@@ -192,9 +199,8 @@ function Game() {
                     prizes.push(word)
                     colscore += Math.floor(Math.exp(word.length))
                     for (let row=startrow; row<endrow; row++)
-                        highlight[''+row+','+prizeCol] = true
-                } else
-                    console.log('no '+word)
+                        highlight[''+row+','+prizeCol] = 2
+                }
             }
         if (rowscore && colscore)
             score += rowscore * colscore
@@ -205,6 +211,35 @@ function Game() {
             hiscore = score
             window.localStorage.setItem('hiscore', hiscore)
         }
+    }
+    function saveBoardState() {
+        window.localStorage.setItem('board', JSON.stringify({
+            board: board,
+            used: used,
+            resettime: resettime.getTime(),
+            prizes: prizes,
+            highlight: highlight,
+            score: score,
+        }))
+    }
+    function restoreBoardState() {
+        try {
+            let saved = JSON.parse(window.localStorage.getItem('board'))
+            if (saved.resettime == resettime.getTime() &&
+                saved.used != used) {
+                reset()
+                for (; used<saved.used; used++)
+                    next = nextfunc()
+                board = saved.board
+                used = saved.used
+                prizes = saved.prizes || []
+                highlight = saved.highlight || {}
+                score = saved.score || 0
+                return true
+            }
+        } catch(e) {
+        }
+        return false
     }
     function mulberry32(a) {
         return function() {
