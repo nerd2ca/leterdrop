@@ -73,6 +73,7 @@ function Game() {
     const nbsp = m.trust('&nbsp')
     window.addEventListener('resize', setSize)
     window.addEventListener('orientationchange', setSize)
+    document.addEventListener('visibilitychange', _ => { restoreBoardState() && m.redraw() })
     setSize()
     function reset() {
         board = []
@@ -226,12 +227,11 @@ function Game() {
         try {
             let saved = JSON.parse(window.localStorage.getItem('board'))
             if (saved.resettime == resettime.getTime() &&
-                saved.used != used) {
+                (saved.used > used || !used)) {
                 reset()
                 for (; used<saved.used; used++)
                     next = nextfunc()
                 board = saved.board
-                used = saved.used
                 prizes = saved.prizes || []
                 highlight = saved.highlight || {}
                 score = saved.score || 0
@@ -252,4 +252,5 @@ function Game() {
 }
 
 document.body.style.margin = 0
+document.body.style.background = '#000'
 m.mount(document.body, Game)
