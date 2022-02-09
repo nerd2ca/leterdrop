@@ -194,7 +194,7 @@ function Game() {
                     word += board[prizeRow][col] || ' '
                 if (words[word]) {
                     prizes.push(word)
-                    rowscore += Math.floor(Math.exp(word.length))
+                    score += word.length
                     for (let col=startcol; col<endcol; col++)
                         highlight[''+prizeRow+','+col] = 2
                 }
@@ -207,15 +207,11 @@ function Game() {
                     word += board[row][prizeCol] || ' '
                 if (words[word]) {
                     prizes.push(word)
-                    colscore += Math.floor(Math.exp(word.length))
+                    score += word.length
                     for (let row=startrow; row<endrow; row++)
                         highlight[''+row+','+prizeCol] = 2
                 }
             }
-        if (rowscore && colscore)
-            score += rowscore * colscore
-        else
-            score += rowscore + colscore
         hiscore = window.localStorage.getItem('hiscore') || 0
         if (score > hiscore) {
             hiscore = score
