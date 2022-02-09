@@ -66,20 +66,23 @@ function Score() {
 }
 
 function Game() {
-    const gridw = 8, gridh = 8, minwordlen = 3
+    const minwordlen = 3, biggridw = 8, biggridh = 8, smallgridw = 5, smallgridh = 5
+    var gridw, gridh
     var sqsize
     var rows, next, used, prizes, highlight, score, hiscore
     var randfunc, nextfunc, resettime
     const nbsp = m.trust('&nbsp')
+    setSize()
     window.addEventListener('resize', setSize)
     window.addEventListener('orientationchange', setSize)
     document.addEventListener('visibilitychange', _ => { restoreBoardState() && m.redraw() })
-    setSize()
     function reset() {
+        gridw = biggridw
+        gridh = biggridh
         board = []
-        for (let y=0; y<gridh; y++) {
+        for (let y=0; y<biggridh; y++) {
             let r = []
-            for (let x=0; x<gridw; x++) {
+            for (let x=0; x<biggridw; x++) {
                 r.push(null)
             }
             board.push(r)
@@ -101,6 +104,7 @@ function Game() {
         }
         used = 0
         next = nextfunc()
+        setSize()
     }
     function autoreset() {
         let t = new Date()
@@ -127,9 +131,11 @@ function Game() {
                     },
                 }, [
                     board.map((cols, row) => {
+                        if (row >= gridh) return
                         return [
                             m('br'),
                             cols.map((rune, col) => {
+                                if (col >= gridw) return
                                 let hi = highlight[''+row+','+col]
                                 return m(Letter, {
                                     size: sqsize,
@@ -149,13 +155,16 @@ function Game() {
                     }),
                 ]),
                 m('br'),
-                m(Button, {
+                gridw>smallgridw && m(Button, {
                     size: sqsize,
                     onclick: e => {
                         e.preventDefault()
                         reset()
+                        gridw = smallgridw
+                        gridh = smallgridh
+                        saveBoardState()
                     },
-                }, 'clear'),
+                }, 'erase & try smaller'),
                 m('br'),
                 m('p', {
                     style: {
@@ -169,8 +178,8 @@ function Game() {
     }
     function setSize() {
         sqsize = Math.min(
-            window.innerWidth / gridw,
-            window.innerHeight / (gridh + 3)) - 2
+            window.innerWidth / biggridw,
+            window.innerHeight / (biggridh + 3)) - 2
         m.redraw()
     }
     function givePrizes(prizeRow, prizeCol) {
@@ -221,13 +230,15 @@ function Game() {
             prizes: prizes,
             highlight: highlight,
             score: score,
+            gridw: gridw,
+            gridh: gridh,
         }))
     }
     function restoreBoardState() {
         try {
             let saved = JSON.parse(window.localStorage.getItem('board'))
             if (saved.resettime == resettime.getTime() &&
-                (saved.used > used || !used)) {
+                (!used || saved.used > used || saved.gridw < gridw)) {
                 reset()
                 for (; used<saved.used; used++)
                     next = nextfunc()
@@ -235,6 +246,8 @@ function Game() {
                 prizes = saved.prizes || []
                 highlight = saved.highlight || {}
                 score = saved.score || 0
+                gridw = saved.gridw || biggridw
+                gridh = saved.gridh || biggridh
                 return true
             }
         } catch(e) {
